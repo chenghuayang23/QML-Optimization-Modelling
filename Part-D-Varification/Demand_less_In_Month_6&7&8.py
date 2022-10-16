@@ -26,9 +26,9 @@ workerCosts       =  (2000, 2000, 2500, 2500,        # euro
 prodCapability    =  (15, 20, 10)                    #  unit
 
 # products demond for each type in each month 
-demand        =      ((750, 650, 600, 500, 130.3, 650, 600, 750, 650, 600, 500, 550),     # unit
-                      (550, 500, 450, 275, 350, 300, 500, 600, 500, 400.6, 300, 250),     
-                      (550, 500, 500, 320.5, 300, 150.2, 225, 500, 450, 350, 300, 350))
+demand        =      ((750, 650, 600, 500, 130.3, 0, 0, 0, 650, 600, 500, 550),     # unit
+                      (550, 500, 450, 275, 350, 0, 0, 0, 500, 400.6, 300, 250),     
+                      (550, 500, 500, 320.5, 300, 0, 0, 0, 450, 350, 300, 350))
 
 
 # ----- sets -----
@@ -83,6 +83,23 @@ con2 = {}
 for i in I:
     for k in K:
         con2[i,k] = model.addConstr(r[i,k] >= 0, 'con1[' + str(i) + ',' + str(k) + ']-')
+
+# Constrains 3: Arranging personnel is only allowed at three quadrature points in a year, namely, Jannuary, April, July and October
+# Constrains 3 makes sure that worker quantity remains unchanged for each quarter of a year 
+con3 = {}
+for k in K:
+    # The worker quantities of January, February and March are equal to each other 
+    if (0 <= k <= 2): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 0] for i in I))
+    # The worker quantities of April, May and June are equal to each other
+    if (3 <= k <= 5): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 3] for i in I)) 
+    # The worker quantities of July, August and September are equal to each other
+    if (6 <= k <= 9): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 6] for i in I))
+    # The worker quantities of October, November and December are equal to each other
+    if (9 <= k <= 11): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 9] for i in I))
 
 
 # ---- Solve ----

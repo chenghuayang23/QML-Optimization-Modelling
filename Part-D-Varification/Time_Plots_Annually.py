@@ -84,11 +84,10 @@ for i in I:
     for k in K:
         con2[i,k] = model.addConstr(r[i,k] >= 0, 'con1[' + str(i) + ',' + str(k) + ']-')
 
-# Constrains 3: changing the arrangement time plots from maximum four times in a year to only once a year 
+# Constrains 3: Arranging personnel is only allowed once in a year
 con3 = {}
 for k in K:
-    # The worker quantities of January, February and March are equal to each other 
-    con3[i,k] = model.addConstr(x[i,k] == x[i,0], 'con[' + str(i) + ',' + str(k) + ']-') 
+    con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 0] for i in I))
 
 
 # ---- Solve ----

@@ -52,7 +52,7 @@ model.update ()
 r = {} 
 for i in I:
     for k in K:
-        r[i,k] = model.addVar(lb = 0, vtype = GRB.CONTINUOUS, name = 'R[' + str(i) + ',' + str(k) + ']')
+        r[i,k] = model.addVar(lb = 400, vtype = GRB.CONTINUOUS, name = 'R[' + str(i) + ',' + str(k) + ']')
 
 # Integrate new variables
 model.update ()
@@ -83,6 +83,23 @@ con2 = {}
 for i in I:
     for k in K:
         con2[i,k] = model.addConstr(r[i,k] >= 0, 'con1[' + str(i) + ',' + str(k) + ']-')
+
+# Constrains 3: Arranging personnel is only allowed at three quadrature points in a year, namely, Jannuary, April, July and October
+# Constrains 3 makes sure that worker quantity remains unchanged for each quarter of a year 
+con3 = {}
+for k in K:
+    # The worker quantities of January, February and March are equal to each other 
+    if (0 <= k <= 2): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 0] for i in I))
+    # The worker quantities of April, May and June are equal to each other
+    if (3 <= k <= 5): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 3] for i in I)) 
+    # The worker quantities of July, August and September are equal to each other
+    if (6 <= k <= 9): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 6] for i in I))
+    # The worker quantities of October, November and December are equal to each other
+    if (9 <= k <= 11): 
+        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 9] for i in I))
 
 
 # ---- Solve ----
