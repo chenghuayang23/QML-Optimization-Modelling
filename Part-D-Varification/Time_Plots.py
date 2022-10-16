@@ -84,22 +84,11 @@ for i in I:
     for k in K:
         con2[i,k] = model.addConstr(r[i,k] >= 0, 'con1[' + str(i) + ',' + str(k) + ']-')
 
-# Constrains 3: Arranging personnel is only allowed at three quadrature points in a year, namely, Jannuary, April, July and October
-# Constrains 3 makes sure that worker quantity remains unchanged for each quarter of a year 
+# Constrains 3: changing the arrangement time plots from maximum four times in a year to only once a year 
 con3 = {}
 for k in K:
     # The worker quantities of January, February and March are equal to each other 
-    if (0 <= k <= 2): 
-        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 0] for i in I))
-    # The worker quantities of April, May and June are equal to each other
-    if (3 <= k <= 5): 
-        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 3] for i in I)) 
-    # The worker quantities of July, August and September are equal to each other
-    if (6 <= k <= 9): 
-        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 6] for i in I))
-    # The worker quantities of October, November and December are equal to each other
-    if (9 <= k <= 11): 
-        con3[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 9] for i in I))
+    con3[i,k] = model.addConstr(x[i,k] == x[i,0], 'con[' + str(i) + ',' + str(k) + ']-') 
 
 
 # ---- Solve ----
