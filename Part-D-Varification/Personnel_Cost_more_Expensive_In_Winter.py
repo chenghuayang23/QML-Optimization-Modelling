@@ -20,7 +20,7 @@ holdingCosts      =  (6, 8, 10)                      # euro/unit
 # cost of one worker in each month
 workerCosts       =  (4000, 4000, 2500, 2500,        # euro
                       2500, 3000, 3000, 3000, 
-                      2500, 2500, 4000, 4000) 
+                      2500, 2500, 2000, 2000) 
 
 # number of products of each type produced by a worker in a month
 prodCapability    =  (15, 20, 10)                    #  unit

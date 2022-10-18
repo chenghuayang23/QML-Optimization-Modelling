@@ -52,7 +52,7 @@ model.update ()
 r = {} 
 for i in I:
     for k in K:
-        r[i,k] = model.addVar(lb = 400, vtype = GRB.CONTINUOUS, name = 'R[' + str(i) + ',' + str(k) + ']')
+        r[i,k] = model.addVar(lb = 200, vtype = GRB.CONTINUOUS, name = 'R[' + str(i) + ',' + str(k) + ']')
 
 # Integrate new variables
 model.update ()
