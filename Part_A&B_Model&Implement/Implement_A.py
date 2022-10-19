@@ -73,16 +73,12 @@ for i in I:
     for k in K:
         if k == 0:
             # The first month dose not have overproduction products from previous month
-            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] - demand[i][k])
+            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] - demand[i][k],\
+                                        'con1[' + str(i) + ',' + str(k) + ']-')
         else:
             # The remaining products from previous month are used to meet the current month need
-            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] + r[i,k-1] - demand[i][k])
-
-con2 = {}
-for i in I:
-    for k in K:
-        con2[i,k] = model.addConstr(r[i,k] >= 0, 'con1[' + str(i) + ',' + str(k) + ']-')
-
+            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] + r[i,k-1] - demand[i][k],\
+                                        'con1[' + str(i) + ',' + str(k) + ']-')
 
 # ---- Solve ----
 
