@@ -81,9 +81,9 @@ for i in I:
                                         'con1[' + str(i) + ',' + str(k) + ']-')
 
 
-# Constrains 3: Arranging personnel is only allowed at three quadrature points in a year, 
+# Constrains 2: Arranging personnel is only allowed at three quadrature points in a year, 
 # namely, Jannuary, April, July and October
-# Constrains 3 makes sure that worker quantity remains unchanged for each quarter of a year 
+# Constrains 2 makes sure that worker quantity remains unchanged for each quarter of a year 
 con2 = {}
 for k in K:
     # The worker quantities of January, February and March are equal to each other 
@@ -135,22 +135,21 @@ if model.status == GRB.Status.OPTIMAL: # If optimal solution is found
     workers =[f_workerQuant[0:12], f_workerQuant[12:24], f_workerQuant[24:36], f_workerQuantSum]
     columnNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Agu","Sept","Oct","Nov","Dec"]
     df = pd.DataFrame(workers, columns = columnNames, index=['1', '2', '3', 'sum'])
-    print('--------------------------worker quantity per month per type---------------------------')
+    print('-------------------------Worker quantity per month per type-------------------------')
     print(df)
     print('\n')
 
-    #-----------Porducts per type per month produced------------#
-    productQuant = []
+    #-----------Remaining porducts per type per month produced------------#
+    remainingQuant = []
     for i in I:
         for k in K:
-            productQuant.append(r[i,k].x)
-            #abs(x[i,k].x * prodCapability[i] - demand[i,k])
-    f_productQuant = ['%.2f' % member for member in productQuant]
+            remainingQuant.append(r[i,k].x)
+    f_remainingQuant = ['%.2f' % member for member in remainingQuant]
 
     # print the result in the table form
-    products =[f_productQuant[0:12], f_productQuant[12:24], f_productQuant[24:36]]
+    products =[f_remainingQuant[0:12], f_remainingQuant[12:24], f_remainingQuant[24:36]]
     df = pd.DataFrame(products, columns = columnNames, index=['1', '2', '3'])
-    print('-----------------------------product quantity per month per type------------------------------')
+    print('-------------------------Remaining product quantity per month per type--------------------------')
     print(df)
 
 else:
