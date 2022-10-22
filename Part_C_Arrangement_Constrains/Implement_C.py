@@ -35,6 +35,7 @@ demand        =      ((750, 650, 600, 500, 130.3, 650, 600, 750, 650, 600, 500, 
 
 I = range(len(holdingCosts))     # Set for the product types
 K = range(len(workerCosts))      # Set for the months
+S = [0, 3, 6, 9]
 
 
 # ----- Variables -----
@@ -85,7 +86,12 @@ for i in I:
 # namely, Jannuary, April, July and October
 # Constrains 2 makes sure that worker quantity remains unchanged for each quarter of a year 
 con2 = {}
-for k in K:
+for s in S:
+    con2[s] = model.addConstr(quicksum(x[i,s] for i in I) == quicksum(x[i,s+1] for i in I), 'con2[' + str(s) + ']-')
+con3 = {}
+for s in S:
+    con2[s] = model.addConstr(quicksum(x[i,s+1] for i in I) == quicksum(x[i,s+2] for i in I), 'con2[' + str(s+1) + ']-')
+'''for k in K:
     # The worker quantities of January, February and March are equal to each other 
     if (0 <= k <= 2): 
         con2[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 0] for i in I), 'con2[' + str(k) + ']-')
@@ -97,7 +103,7 @@ for k in K:
         con2[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 6] for i in I), 'con2[' + str(k) + ']-')
     # The worker quantities of October, November and December are equal to each other
     if (9 <= k <= 11): 
-        con2[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 9] for i in I), 'con2[' + str(k) + ']-')
+        con2[k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i, 9] for i in I), 'con2[' + str(k) + ']-')'''
 
 
 # ---- Solve ----
