@@ -57,27 +57,33 @@ r = {}
 for i in I:
     for k in K:
         r[i,k] = model.addVar(lb = 0, vtype = GRB.CONTINUOUS, name = 'R[' + str(i) + ',' + str(k) + ']')
+# Integrate new variables
+model.update ()
 
 # n[i,k] is the number of workers newly hired producing type i at the beginning of month k
 n = {}
 for i in I:
     for k in K:
         n[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'N[' + str(i) + ',' + str(k) + ']')
+model.update ()
 
 # b[i,k] is the number of workers fired producing type i at the beginning of month k
 b = {}
 for i in I:
     for k in K:
         b[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'B[' + str(i) + ',' + str(k) + ']')
+model.update ()
 
-# Integrate new variables
+a = {}
+for k in K:
+    a[k] = model.addVar(lb = 0, vtype = GRB.BINARY, name = 'A[' + str(k) + ']')
 model.update ()
 
 
 # ---- Objective Function ----
 
 model.setObjective(quicksum((r[i,k] * holdingCosts[i] + workerCosts[k] * x[i,k] +\
-                             trainingCost * n[i,k] + firingCost * b[i,k]) for i in I for k in K))
+                             firingCost * b[i,k]) for i in I for k in K) + quicksum(trainingCost * a[k] for k in K))
 model.modelSense = GRB.MINIMIZE
 model.update()
 
@@ -115,13 +121,18 @@ for i in I:
 con3 = {} 
 for i in I:
     for k in K:
-        if k <= contractPeriods:
+        if k <= contractPeriods-1:
             con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) == 0, 'con3[' + str(i) + ',' + str(k) + ']-')
         else:
             con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) <= quicksum(x[i,k-contractPeriods] for i in I), \
                                         'con3[' + str(i) + ',' + str(k) + ']-')
 
 
+# Constraints 4: when there are newly hired workers in the beginning of month k, a[k] = 1;
+# when no workers are hired in the beginning of month k, a[k] = 0
+con4 = {}
+for k in K:
+    con4[k] = model.addConstr(quicksum(n[i,k] for i in I) <= 1000000 * a[k], 'con4[' + str(k) + ']-')
 
 # ---- Solve ----
 
@@ -144,7 +155,7 @@ if model.status == GRB.Status.OPTIMAL: # If optimal solution is found
     print('Total salary costs: %10.2f euro' % sum(workerCosts[k] * x[i,k].x for i in I for k in K))
     # Total firing cost
     print('Total firing costs: %10.2f euro' % sum(firingCost * b[i,k].x for i in I for k in K))
-    print('Total training costs: %10.2f euro' % sum(trainingCost * n[i,k].x for i in I for k in K))
+    print('Total training costs: %10.2f euro' % sum(trainingCost * a[k].x for k in K))
     print ('\n') 
 
     #------------worker quantity for each type of products in each month------------#
