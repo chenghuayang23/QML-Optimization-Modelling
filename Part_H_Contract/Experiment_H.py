@@ -30,54 +30,68 @@ demand        =      ((750, 650, 600, 500, 130.3, 650, 600, 750, 650, 600, 500, 
                       (550, 500, 450, 275, 350, 300, 500, 600, 500, 400.6, 300, 250),     
                       (550, 500, 500, 320.5, 300, 150.2, 225, 500, 450, 350, 300, 350))
 
-# cost for firing one worker
-# firing cost is changed from 0 to 8000, the step is 1000
-firingCost = 2000    # euro
+firingCost = 2000     # euro
+trainingCost = 5000   # euro
+
+contractPeriods = 12   # month
 
 # ----- sets -----
 
 I = range(len(holdingCosts))     # Set for the product types
 K = range(len(workerCosts))      # Set for the months
-S = [0, 3, 6, 9]
 
 
 # ----- Variables -----
 
-# Decision Variable x(i,k) is number of workers producing product i in the beginning of month k
+# x[i,k] is the number of workers producing product i at the beginning of month k
 x = {} 
 for i in I:
     for k in K:
-        # Workers only work full time, namely, x_ik must be an integer
+        # Workers only work full time, so x_ik must be an integer
         x[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'X[' + str(i) + ',' + str(k) + ']') 
 # Integrate new variables
 model.update ()
 
-# Auxiliary Variables r(i,k) is the remaining products of type i in the beginning of month k
+# r[i,k] is the remaining products of type i of at the end of month k
 r = {} 
 for i in I:
     for k in K:
         r[i,k] = model.addVar(lb = 0, vtype = GRB.CONTINUOUS, name = 'R[' + str(i) + ',' + str(k) + ']')
+# Integrate new variables
 model.update ()
 
-# Auxiliary Variables v(s) is the number of workers fired at each arrangement moment, which is in the beginning of s month
-v = {}
-for s in S:
-    v[s] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'V[' + str(s) + ']')
-# Integrate new variables
+# n[i,k] is the number of workers newly hired producing type i at the beginning of month k
+n = {}
+for i in I:
+    for k in K:
+        n[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'N[' + str(i) + ',' + str(k) + ']')
+model.update ()
+
+# b[i,k] is the number of workers fired producing type i at the beginning of month k
+b = {}
+for i in I:
+    for k in K:
+        b[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'B[' + str(i) + ',' + str(k) + ']')
+model.update ()
+
+a = {}
+for k in K:
+    a[k] = model.addVar(lb = 0, vtype = GRB.BINARY, name = 'A[' + str(k) + ']')
 model.update ()
 
 
 # ---- Objective Function ----
 
-model.setObjective(quicksum((holdingCosts[i] * r[i,k] + workerCosts[k] * x[i,k]) for i in I for k in K) + \
-                   quicksum((firingCost * v[s] for s in S)))
+model.setObjective(quicksum((r[i,k] * holdingCosts[i] + workerCosts[k] * x[i,k] +
+                             firingCost * b[i,k]) for i in I for k in K) + 
+                             quicksum(trainingCost * a[k] for k in K))
 model.modelSense = GRB.MINIMIZE
 model.update()
 
 
 # ---- Constraints ----
 
-# Constrains 1: the relationship between variables r[i,k] x[i,k]
+# Constrains 1: production of each type of products must exceed the corresponding demand
 con1 = {}
 for i in I:
     for k in K:
@@ -90,25 +104,36 @@ for i in I:
             con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] + r[i,k-1] - demand[i][k], \
                                         'con1[' + str(i) + ',' + str(k) + ']-')
 
+# Constraints 2: relationship between x[i,k] n[i,k] & b[i,k]
+con2 = {}
+for i in I:
+    for k in K:
+        if k == 0:
+            con2[i,k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(n[i,k] for i in I) - \
+                                        quicksum(b[i,k] for i in I),                                 \
+                                        'con2[' + str(i) + ',' + str(k) + ']-')
+        else:
+            con2[i,k] = model.addConstr(quicksum(x[i,k] for i in I) == quicksum(x[i,k-1] for i in I) + \
+                                        quicksum(n[i,k] for i in I) - quicksum(b[i,k] for i in I),      \
+                                        'con2[' + str(i) + ',' + str(k) + ']-') 
 
-# Constrains 2: Arranging personnel are only allowed 4 times in a year, 
-# each at Jannuary, April, July and October
-# Constrains 2 makes sure that worker quantity remains unchanged for each quarter of a year 
-con2_1 = {}
-for s in S:
-    con2_1[s] = model.addConstr(quicksum(x[i,s] for i in I) == quicksum(x[i,s+1] for i in I), 'con2_1[' + str(s) + ']-')
-    
-con2_2 = {}
-for s in S:
-    con2_2[s] = model.addConstr(quicksum(x[i,s+1] for i in I) == quicksum(x[i,s+2] for i in I), 'con2_2[' + str(s+1) + ']-')
+# Constraints 3: workers fired at the beginning of a certain month 
+# must be already hired for more than 'contractPeriods' month
+con3 = {} 
+for i in I:
+    for k in K:
+        if k <= contractPeriods-1:
+            con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) == 0, 'con3[' + str(i) + ',' + str(k) + ']-')
+        else:
+            con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) <= quicksum(x[i,k-contractPeriods] for i in I), \
+                                        'con3[' + str(i) + ',' + str(k) + ']-')
 
-#Constrains 3: calculates the number of workers fired at each arrangement moment
-con3 = {}
-for s in S:
-    if s == 0:
-        con3[s] = model.addConstr(v[s] == 0, 'con3[' + str(s) + ']')
-    else:
-        con3[s] = model.addConstr(v[s] == quicksum(x[i,s-1] for i in I) - quicksum(x[i,s] for i in I), 'con3[' + str(s) + ']')
+
+# Constraints 4: when there are newly hired workers in the beginning of month k, a[k] = 1;
+# when no workers are hired in the beginning of month k, a[k] = 0
+con4 = {}
+for k in K:
+    con4[k] = model.addConstr(quicksum(n[i,k] for i in I) <= 1000000 * a[k], 'con4[' + str(k) + ']-')
 
 # ---- Solve ----
 
@@ -123,12 +148,11 @@ model.optimize()
 print('\n--------------------------------------------------------------------\n')
     
 if model.status == GRB.Status.OPTIMAL: # If optimal solution is found
-    # print total cost, holding cost, worker salary cost and firing cost
-    print('%10.2f %10.2f  %10.2f %10.2f' % (model.objVal,    
+    print('%.2f  %.2f  %.2f  %.2f  %.2f' % (model.objVal,    
                                         sum(holdingCosts[i] * r[i,k].x for k in K for i in I),
                                         sum(workerCosts[k] * x[i,k].x for k in K for i in I),
-                                        sum(firingCost * v[s].x for s in S)))
-
+                                        sum(firingCost * b[i,k].x for k in K for i in I),
+                                        sum(trainingCost * a[k].x for k in K))) 
 
     #------------worker quantity for each type of products in each month------------#
     workerQuant = []

@@ -18,7 +18,7 @@ model = Model("ProductsManufactuing")
 holdingCosts      =  (6, 8, 10)                      # euro/unit
 
 # cost of one worker in each month
-workerCosts       =  (2500, 2000, 2500, 2500,        # euro
+workerCosts       =  (0, 2000, 2500, 2500,        # euro
                       2500, 3000, 3000, 3000, 
                       2500, 2500, 2000, 2000) 
 
