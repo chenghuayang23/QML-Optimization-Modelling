@@ -67,7 +67,14 @@ for i in I:
         n[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'N[' + str(i) + ',' + str(k) + ']')
 model.update ()
 
-# b[i,k] is the number of workers fired producing type i at the beginning of month k
+# m[i,k] is the number of workers can be fired producing type i at the beginning of month k
+m = {}
+for i in I:
+    for k in K:
+        m[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'M[' + str(i) + ',' + str(k) + ']')
+model.update ()
+
+# b[i,k] is the number of workers actually fired producing type i at the beginning of month k
 b = {}
 for i in I:
     for k in K:
@@ -116,23 +123,30 @@ for i in I:
                                         quicksum(n[i,k] for i in I) - quicksum(b[i,k] for i in I),      \
                                         'con2[' + str(i) + ',' + str(k) + ']-') 
 
-# Constraints 3: workers fired at the beginning of a certain month 
-# must be already hired for more than 'contractPeriods' month
+# Constraints 3: number of workers can be fired at the beginning of month k is calculated based on 
+# month workers can be fired k-1
 con3 = {} 
 for i in I:
     for k in K:
         if k <= contractPeriods-1:
-            con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) == 0, 'con3[' + str(i) + ',' + str(k) + ']-')
+            con3[i,k] = model.addConstr(quicksum(m[i,k] for i in I) == 0, 'con3[' + str(i) + ',' + str(k) + ']-')
         else:
-            con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) <= quicksum(x[i,k-contractPeriods] for i in I), \
-                                        'con3[' + str(i) + ',' + str(k) + ']-')
+            con3[i,k] = model.addConstr(quicksum(m[i,k] for i in I) == quicksum(m[i,k-1] - b[i,k-1] + 
+            n[i,k-contractPeriods] for i in I), 'con3[' + str(i) + ',' + str(k) + ']-')
+
+# Constrain 4: workers actually fired is less than workers can be fired
+con4 = {}
+for i in I:
+    for k in K:
+        con4[i,k] = model.addConstr(quicksum(b[i,k] for i in I) <= quicksum(m[i,k] for i in I),
+                                    'con4[' + str(i) + ',' + str(k) + ']-')
 
 
 # Constraints 4: when there are newly hired workers in the beginning of month k, a[k] = 1;
 # when no workers are hired in the beginning of month k, a[k] = 0
-con4 = {}
+con5 = {}
 for k in K:
-    con4[k] = model.addConstr(quicksum(n[i,k] for i in I) <= 1000000 * a[k], 'con4[' + str(k) + ']-')
+    con5[k] = model.addConstr(quicksum(n[i,k] for i in I) <= 1000000 * a[k], 'con5[' + str(k) + ']-')
 
 # ---- Solve ----
 
