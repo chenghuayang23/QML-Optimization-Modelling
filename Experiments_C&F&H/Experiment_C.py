@@ -15,7 +15,7 @@ model = Model("ProductsManufactuing")
 # ----- parameters -----
 
 # holdingcosts per month per product 
-holdingCosts      =  (6, 8, 10)                      # euro/unit
+holdingCosts      =  (6, 32, 10)                      # euro/unit
 
 # cost of one worker in each month
 workerCosts       =  (0, 2000, 2500, 2500,        # euro
@@ -115,7 +115,39 @@ if model.status == GRB.Status.OPTIMAL: # If optimal solution is found
     for i in I:
         print('totoal holding cost for type %d is %10.2f' %  (i, sum(r[i,k].x * holdingCosts[i] for k in K)))
 
-    
+     #------------worker quantity for each type of products in each month------------#
+    workerQuant = []
+    for i in I:
+        for k in K:
+            workerQuant.append(abs(x[i,k].x))
+    f_workerQuant = ['%.2f' % member for member in workerQuant]
+
+    # compute worker quantity of each month
+    workerQuantSum = []
+    for k in K:
+        workerQuantSum.append(sum(x[i,k].x for i in I))
+    f_workerQuantSum = ['%.2f' % member for member in workerQuantSum]
+
+    # print the result in the table form
+    workers =[f_workerQuant[0:12], f_workerQuant[12:24], f_workerQuant[24:36], f_workerQuantSum]
+    columnNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Agu","Sept","Oct","Nov","Dec"]
+    df = pd.DataFrame(workers, columns = columnNames, index=['1', '2', '3', 'sum'])
+    print('-------------------------Worker quantity per month per type-------------------------')
+    print(df)
+    print('\n')
+
+    #-----------Remaining porducts per type per month produced------------#
+    remainingQuant = []
+    for i in I:
+        for k in K:
+            remainingQuant.append(r[i,k].x)
+    f_remainingQuant = ['%.2f' % member for member in remainingQuant]
+
+    # print the result in the table form
+    products =[f_remainingQuant[0:12], f_remainingQuant[12:24], f_remainingQuant[24:36]]
+    df = pd.DataFrame(products, columns = columnNames, index=['1', '2', '3'])
+    print('-------------------------Remaining product quantity per month per type--------------------------')
+    print(df)
 
 else:
     print ('\nNo feasible solution found')
