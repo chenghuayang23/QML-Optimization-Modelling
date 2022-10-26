@@ -67,7 +67,14 @@ for i in I:
         n[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'N[' + str(i) + ',' + str(k) + ']')
 model.update ()
 
-# b[i,k] is the number of workers fired producing type i at the beginning of month k
+# m[i,k] is the number of workers can be fired producing type i at the beginning of month k
+m = {}
+for i in I:
+    for k in K:
+        m[i,k] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'M[' + str(i) + ',' + str(k) + ']')
+model.update ()
+
+# b[i,k] is the number of workers actually fired producing type i at the beginning of month k
 b = {}
 for i in I:
     for k in K:
@@ -82,9 +89,8 @@ model.update ()
 
 # ---- Objective Function ----
 
-model.setObjective(quicksum((r[i,k] * holdingCosts[i] + workerCosts[k] * x[i,k] +
-                             firingCost * b[i,k]) for i in I for k in K) + 
-                             quicksum(trainingCost * a[k] for k in K))
+model.setObjective(quicksum((r[i,k] * holdingCosts[i] + workerCosts[k] * x[i,k] +\
+                             firingCost * b[i,k]) for i in I for k in K) + quicksum(trainingCost * a[k] for k in K))
 model.modelSense = GRB.MINIMIZE
 model.update()
 
@@ -117,23 +123,30 @@ for i in I:
                                         quicksum(n[i,k] for i in I) - quicksum(b[i,k] for i in I),      \
                                         'con2[' + str(i) + ',' + str(k) + ']-') 
 
-# Constraints 3: workers fired at the beginning of a certain month 
-# must be already hired for more than 'contractPeriods' month
+# Constraints 3: number of workers can be fired at the beginning of month k is calculated based on 
+# month workers can be fired k-1
 con3 = {} 
 for i in I:
     for k in K:
         if k <= contractPeriods-1:
-            con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) == 0, 'con3[' + str(i) + ',' + str(k) + ']-')
+            con3[i,k] = model.addConstr(quicksum(m[i,k] for i in I) == 0, 'con3[' + str(i) + ',' + str(k) + ']-')
         else:
-            con3[i,k] = model.addConstr(quicksum(b[i,k] for i in I) <= quicksum(x[i,k-contractPeriods] for i in I), \
-                                        'con3[' + str(i) + ',' + str(k) + ']-')
+            con3[i,k] = model.addConstr(quicksum(m[i,k] for i in I) == quicksum(m[i,k-1] - b[i,k-1] + 
+            n[i,k-contractPeriods] for i in I), 'con3[' + str(i) + ',' + str(k) + ']-')
+
+# Constrain 4: workers actually fired is less than workers can be fired
+con4 = {}
+for i in I:
+    for k in K:
+        con4[i,k] = model.addConstr(quicksum(b[i,k] for i in I) <= quicksum(m[i,k] for i in I),
+                                    'con4[' + str(i) + ',' + str(k) + ']-')
 
 
 # Constraints 4: when there are newly hired workers in the beginning of month k, a[k] = 1;
 # when no workers are hired in the beginning of month k, a[k] = 0
-con4 = {}
+con5 = {}
 for k in K:
-    con4[k] = model.addConstr(quicksum(n[i,k] for i in I) <= 1000000 * a[k], 'con4[' + str(k) + ']-')
+    con5[k] = model.addConstr(quicksum(n[i,k] for i in I) <= 1000000 * a[k], 'con5[' + str(k) + ']-')
 
 # ---- Solve ----
 
@@ -154,37 +167,35 @@ if model.status == GRB.Status.OPTIMAL: # If optimal solution is found
                                         sum(firingCost * b[i,k].x for k in K for i in I),
                                         sum(trainingCost * a[k].x for k in K))) 
 
-    #------------worker quantity for each type of products in each month------------#
-    workerQuant = []
+    #------------worker fired and hired producing each type of products in each month------------#
+    hiredQuant = []
+    firedQuant = []
     for i in I:
         for k in K:
-            workerQuant.append(abs(x[i,k].x))
-    f_workerQuant = ['%.2f' % member for member in workerQuant]
+            hiredQuant.append(abs(n[i,k].x))
+            firedQuant.append(abs(b[i,k].x))
+    f_hiredQuant = ['%.2f' % member for member in hiredQuant]
+    f_firedQuant = ['%.2f' % member for member in firedQuant]
 
     # compute worker quantity of each month
-    workerQuantSum = []
+    hiredQuantSum = []
+    firedQuantSum = []
     for k in K:
-        workerQuantSum.append(sum(x[i,k].x for i in I))
-    f_workerQuantSum = ['%.2f' % member for member in workerQuantSum]
+        hiredQuantSum.append(sum(n[i,k].x for i in I))
+        firedQuantSum.append(sum(b[i,k].x for i in I))
+    f_hiredQuantSum = ['%.2f' % member for member in hiredQuantSum]
+    f_firedQuantSum = ['%.2f' % member for member in firedQuantSum]
 
-    workers =[f_workerQuant[0:12], f_workerQuant[12:24], f_workerQuant[24:36], f_workerQuantSum]
+    hired =[f_hiredQuant[0:12], f_hiredQuant[12:24], f_hiredQuant[24:36], f_hiredQuantSum]
+    fired =[f_firedQuant[0:12], f_firedQuant[12:24], f_firedQuant[24:36], f_firedQuantSum]
     columnNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Agu","Sept","Oct","Nov","Dec"]
-    df = pd.DataFrame(workers, columns = columnNames, index=['1', '2', '3', 'sum'])
+    df_h = pd.DataFrame(hired, columns = columnNames, index=['1', '2', '3', 'sum'])
+    df_f = pd.DataFrame(fired, columns = columnNames, index=['1', '2', '3', 'sum'])
     print('-------------------------Worker quantity per month per type-------------------------')
-    print(df)
+    print(df_h)
+    print(df_f)
     print('\n')
 
-    #-----------Remaining porducts per type per month produced------------#
-    remainingQuant = []
-    for i in I:
-        for k in K:
-            remainingQuant.append(r[i,k].x)
-    f_remainingQuant = ['%.2f' % member for member in remainingQuant]
-
-    products =[f_remainingQuant[0:12], f_remainingQuant[12:24], f_remainingQuant[24:36]]
-    df = pd.DataFrame(products, columns = columnNames, index=['1', '2', '3'])
-    print('-------------------------Remaining product quantity per month per type--------------------------')
-    print(df)
 
 else:
     print ('\nNo feasible solution found')
