@@ -2,8 +2,7 @@
 # Gurobi Optimization
 #
 # Author: Chenghua Yang
-# Version 0.0 - flexible arranging 
-# 2022-10-11
+# 2022-10-28
 
 
 from gurobipy import *
@@ -40,7 +39,7 @@ S = [0, 3, 6, 9]
 
 # ----- Variables -----
 
-# Decision Variable x(i,k) (number of workers producing product i in month k)
+# Decision Variable x(i,k) (number of workers producing product i at the beginning of month k)
 x = {} 
 for i in I:
     for k in K:
@@ -49,7 +48,7 @@ for i in I:
 # Integrate new variables
 model.update ()
 
-# Auxiliary Variables r(i,k) (remaining products of type i of month k)
+# State Variables r(i,k) (remaining products of type i at the end of month k)
 r = {} 
 for i in I:
     for k in K:
@@ -68,7 +67,7 @@ model.update()
 
 # ---- Constraints ----
 
-# Constrains 1: production of each type of products must exceed the corresponding demand
+# Constrains 1: make sure the remaining products of each type in each month are correctly calculated
 con1 = {}
 for i in I:
     for k in K:
@@ -77,7 +76,7 @@ for i in I:
             con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] - demand[i][k],\
                                         'con1[' + str(i) + ',' + str(k) + ']-')
         else:
-            # The remaining products from previous month are used first to meet the current month need
+            # The remaining products from previous month are used firstly to meet the current month need
             con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] + r[i,k-1] - demand[i][k], \
                                         'con1[' + str(i) + ',' + str(k) + ']-')
 
