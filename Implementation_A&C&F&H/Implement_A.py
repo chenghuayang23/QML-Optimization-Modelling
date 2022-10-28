@@ -1,9 +1,8 @@
 # Products Manufacturing with lowest cost
 # Gurobi Optimization
 #
-# Author: Chenghua Yang
-# Version 0.0 - flexible arranging 
-# 2022-10-11
+# Author: Chenghua Yang 
+# 2022-10-28
 
 
 from gurobipy import *
@@ -39,7 +38,7 @@ K = range(len(workerCosts))      # Set for the months
 
 # ----- Variables -----
 
-# Decision Variable x(i,k) (number of workers producing product i in month k)
+# Decision Variable x(i,k) (number of workers producing product i at the beginning of month k)
 x = {} 
 for i in I:
     for k in K:
@@ -47,7 +46,7 @@ for i in I:
 # Integrate new variables
 model.update ()
 
-# Auxiliary Variables r(i,k) (remaining products of type i of month k)
+# State Variables r(i,k) (remaining products of type i at the end of month k)
 r = {} 
 for i in I:
     for k in K:
@@ -66,8 +65,7 @@ model.update()
 
 # ---- Constraints ----
 
-# Constraints 1: production of each type of products must exceed the corresponding demand, namely, 
-# remaining products quantity should be non negative
+# Constraints 1: make sure the remaining products of each type in each month are correctly calculated
 con1 = {}
 for i in I:
     for k in K:

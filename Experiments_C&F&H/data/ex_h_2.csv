@@ -1,6 +1,21 @@
-﻿Total_cost  Inventory_cost  Salary_cost  Firing_cost  Training_cost
-2959542.20  24542.20  2826000.00  104000.00  5000.00
-2964642.20  37142.20  2818500.00  104000.00  5000.00
-3065652.20  82152.20  2809500.00  164000.00  10000.00
-3495382.20  165382.20  3059000.00  266000.00  5000.00
-4156532.20  228032.20  3923500.00  0.00  5000.00
+﻿Contract months  Cost  Categotry 
+0  2826000.00  Salary cost
+3  2818500.00  Salary cost
+6  2809500.00  Salary cost
+9  3059000.00  Salary cost
+12  3923500.00  Salary cost
+0  24542.20  Inventory cost
+3  37142.20  Inventory cost  
+6  82152.20  Inventory cost
+9  165382.20  Inventory cost
+12  228032.20  Inventory cost
+0  104000.00  Firing cost
+3  104000.00  Firing cost
+6  164000.00  Firing cost
+9  266000.00  Firing cost
+12  0.00  Firing cost
+0  5000.00  Training cost
+3  5000.00  Training cost
+6  10000.00  Training cost
+9  5000.00  Training cost
+12  5000.00  Training cost

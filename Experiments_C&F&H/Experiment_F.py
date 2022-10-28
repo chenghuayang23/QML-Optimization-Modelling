@@ -31,8 +31,7 @@ demand        =      ((750, 650, 600, 500, 130.3, 650, 600, 750, 650, 600, 500, 
                       (550, 500, 500, 320.5, 300, 150.2, 225, 500, 450, 350, 300, 350))
 
 # cost for firing one worker
-# firing cost is changed from 0 to 8000, the step is 1000
-firingCost = 2000    # euro
+firingCost = 1500     # euro
 
 # ----- sets -----
 
@@ -61,16 +60,17 @@ model.update ()
 
 # Auxiliary Variables v(s) is the number of workers fired at each arrangement moment, which is in the beginning of s month
 v = {}
-for s in S:
-    v[s] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'V[' + str(s) + ']')
-# Integrate new variables
-model.update ()
+for i in I:
+    for s in S:
+        v[i,s] = model.addVar(lb = 0, vtype = GRB.INTEGER, name = 'V[' + str(i) + str(s) + ']')
+    # Integrate new variables
+    model.update ()
 
 
 # ---- Objective Function ----
 
-model.setObjective(quicksum((holdingCosts[i] * r[i,k] + workerCosts[k] * x[i,k]) for i in I for k in K) + \
-                   quicksum((firingCost * v[s] for s in S)))
+model.setObjective(quicksum((holdingCosts[i] * r[i,k] + workerCosts[k] * x[i,k]) for i in I for k in K) +
+                   quicksum((firingCost * v[i,s] for i in I for s in S)))
 model.modelSense = GRB.MINIMIZE
 model.update()
 
@@ -83,11 +83,11 @@ for i in I:
     for k in K:
         if k == 0:
             # The first month dose not have overproduction products from previous month
-            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] - demand[i][k],\
+            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] - demand[i][k],
                                         'con1[' + str(i) + ',' + str(k) + ']-')
         else:
             # The remaining products from previous month are used first to meet the current month need
-            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] + r[i,k-1] - demand[i][k], \
+            con1[i,k] = model.addConstr(r[i,k] == prodCapability[i] * x[i,k] + r[i,k-1] - demand[i][k], 
                                         'con1[' + str(i) + ',' + str(k) + ']-')
 
 
@@ -95,20 +95,26 @@ for i in I:
 # each at Jannuary, April, July and October
 # Constrains 2 makes sure that worker quantity remains unchanged for each quarter of a year 
 con2_1 = {}
-for s in S:
-    con2_1[s] = model.addConstr(quicksum(x[i,s] for i in I) == quicksum(x[i,s+1] for i in I), 'con2_1[' + str(s) + ']-')
-    
+for i in I:
+    for s in S:
+        con2_1[i,s] = model.addConstr(quicksum(x[i,s] for i in I) == quicksum(x[i,s+1] for i in I), 
+                                        'con2_1[' + str(i) + str(s) + ']-')
+        
 con2_2 = {}
-for s in S:
-    con2_2[s] = model.addConstr(quicksum(x[i,s+1] for i in I) == quicksum(x[i,s+2] for i in I), 'con2_2[' + str(s+1) + ']-')
+for i in I:
+    for s in S:
+        con2_2[s] = model.addConstr(quicksum(x[i,s+1] for i in I) == quicksum(x[i,s+2] for i in I), 
+                                    'con2_2[' + str(i) + str(s+1) + ']-')
 
 #Constrains 3: calculates the number of workers fired at each arrangement moment
 con3 = {}
-for s in S:
-    if s == 0:
-        con3[s] = model.addConstr(v[s] == 0, 'con3[' + str(s) + ']')
-    else:
-        con3[s] = model.addConstr(v[s] == quicksum(x[i,s-1] for i in I) - quicksum(x[i,s] for i in I), 'con3[' + str(s) + ']')
+for i in I:
+    for s in S:
+        if s == 0:
+            con3[s] = model.addConstr(v[i,s] == 0, 'con3[' + str(i) + str(s) + ']')
+        else:
+            con3[s] = model.addConstr(quicksum(v[i,s] for i in I) == quicksum(x[i,s-1] for i in I) 
+                                        - quicksum(x[i,s] for i in I), 'con3[' + str(i) + str(s) + ']')
 
 # ---- Solve ----
 
@@ -123,12 +129,15 @@ model.optimize()
 print('\n--------------------------------------------------------------------\n')
     
 if model.status == GRB.Status.OPTIMAL: # If optimal solution is found
-    # print total cost, holding cost, worker salary cost and firing cost
-    print('%10.2f %10.2f  %10.2f %10.2f' % (model.objVal,    
-                                        sum(holdingCosts[i] * r[i,k].x for k in K for i in I),
-                                        sum(workerCosts[k] * x[i,k].x for k in K for i in I),
-                                        sum(firingCost * v[s].x for s in S)))
-
+    # Minimum total cost
+    print('Total costs : %10.2f euro' % model.objVal)  
+    # Total holding cost
+    print('Total holding costs: %10.2f euro' % sum(r[i,k].x * holdingCosts[i] for i in I for k in K)) 
+    # Total personnel cost
+    print('Total salary costs: %10.2f euro' % sum(workerCosts[k] * x[i,k].x for i in I for k in K))
+    # Total firing cost
+    print('Total firing costs: %10.2f euro' % sum(firingCost * v[i,s].x for i in I for s in S))
+    print ('\n') 
 
     #------------worker quantity for each type of products in each month------------#
     workerQuant = []
